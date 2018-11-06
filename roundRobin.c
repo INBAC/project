@@ -8,6 +8,7 @@
 #include<sys/time.h>
 #include<sys/types.h>
 #include<sys/wait.h>
+#include"queue.h"
 
 #define TICK_TIME 2
 #define USER_PROCESS_NUM 10
@@ -37,22 +38,19 @@ int main()
 	sigaction(SIGUSR2, &kernalAfterAction, &oldKernalAfterAction);
 
 	srand((int)time(NULL));
+	random[i] = (rand() % 10) + 1;
 	kernalPID = getpid();
 
-	for(i = 0; i < USER_PROCESS_NUM; i++)
-	{
-		random[i] = (rand() % 10) + 1;
+	for(i = 0; i < USER_PROCESS_NUM; i++){
 		pid[i] = fork();
-		if(pid[i] == 0)
-		{
+		if(pid[i] == 0){
 			struct sigaction oldUserAction;
 			struct sigaction userAction;
 			memset(&userAction, 0, sizeof(userAction));
 			userAction.sa_handler = &cpuAction;
 			sigaction(SIGUSR1, &userAction, &oldUserAction)
 		}
-		else it(pid[i] < 0)
-		{
+		else it(pid[i] < 0)	{
 		    perror("fork");
 		    abort();
 		}

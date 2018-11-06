@@ -1,13 +1,15 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+#define FALSE 0
+#define TRUE 1
 typedef struct {
 	int pid;
 	int CPU_burst;
 } PCB;
 
 typedef struct PROCESS{
-		PCB pcb;
+		PCB *pcb;
 		struct PROCESS *next;
 } PROCESS;
 
@@ -50,8 +52,8 @@ void insertQueue(Queue *p, PROCESS *pPre, PCB *pcb){
 	p->count++;
 }
 
-pcb *deleteQueue(Queue *p, PROCESS *pPre, PROCESS *pLoc){
-	PROCESS *temp = NULL;
+PCB *deleteQueue(Queue *p, PROCESS *pPre, PROCESS *pLoc){
+	PCB *temp = NULL;
 	temp = pLoc->pcb;
 
 	if(pPre == NULL)
@@ -72,9 +74,9 @@ void addprocess(Queue *p, PCB *pcb){
 		insertQueue(p, pPre, pcb);
 }
 
-pcb* removeprocess(Queue *p, PCB *pcb){
+PCB* removeprocess(Queue *p, PCB *pcb){
 	PROCESS *pPre = NULL, *pLoc = NULL;
-	pcb *temp = NULL;
+	PCB *temp = NULL;
 	int found;
 
 	found = SearchQueue(p, &pPre, &pLoc, pcb);
@@ -83,7 +85,7 @@ pcb* removeprocess(Queue *p, PCB *pcb){
 	return temp;
 }
 
-void destroyprocess(Queue *p){
+void destroyQueue(Queue *p){
 	PROCESS *pDel = NULL, *pNext = NULL;
 	for(pDel = p->head; pDel != NULL; pDel = pNext){
 		pNext = pDel->next;
