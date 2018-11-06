@@ -29,7 +29,6 @@ int main()
 	struct sigaction kernalAfterAction;
 	struct sigaction oldKernalAfterAction;
 
-	srand((int)time(NULL));
 	memset(&kernalBeforeAction, 0, sizeof(kernalBeforeAction));
 	memset(&kernalAfterAction, 0, sizeof(kernalAfterAction));
 	kernalBeforeAction.sa_handler = &singleTick;
@@ -37,6 +36,7 @@ int main()
 	sigaction(SIGALRM, &kernalBeforeAction, &oldKernalBeforeAction);
 	sigaction(SIGUSR2, &kernalAfterAction, &oldKernalAfterAction);
 
+	srand((int)time(NULL));
 	kernalPID = getpid();
 
 	for(i = 0; i < USER_PROCESS_NUM; i++)
@@ -58,7 +58,7 @@ int main()
 		}
 	}
 
-	//create queue and enqueue all random CPU burst and PID
+	//create queue and enqueue all random values CPU burst and PID
 
 	struct itimerval new_itimer, old_itimer;
 	new_itimer.it_interval.tv_sec = TICK_TIME;
