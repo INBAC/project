@@ -4,83 +4,90 @@
 typedef struct {
 	int pid;
 	int CPU_burst;
-} ITEM;
+} PCB;
 
 typedef struct PROCESS{
-		ITEM item;
+		PCB pcb;
 		struct PROCESS *next;
 } PROCESS;
 
 typedef struct {
 	int count;
-	PROCESS *front, *rear;
+	PROCESS *head;
+	PROCESS *pos;
 } Queue;
 
 Queue *CreateQueue(){
-	Queue NewQueue = (Queue*)malloc(sizeof(Queue));
-	if(NewQueue == NULL)
-			return NULL;
-
+	Queue *NewQueue = (Queue*)malloc(sizeof(Queue));
+	NewQueue->pos = NULL;
+	NewQueue->head = NULL; //initialize
 	NewQueue->count = 0;
-	NewQueue->front = NewQueue->rear = NULL:
-
 	return NewQueue;
 }
 
-void Enqueue(Queue *pQueue, ITEM item){
-	PROCESS *Newptr = (PROCESS*)malloc(sizeof(PROCESS));
-	if(Newptr == NULL)
-		return;
-
-	Newptr->item = item;
-	Newptr->next = NULL;
-
-	if(pQueue->front == 0){
-		pQueue->front = pQueue->rear = Newptr;
+int SearchQueue(Queue *p, PROCESS **ppPre, PROCESS **ppLoc, PCB *pcb){
+	for(*ppPre = NULL, *ppLoc = p->head; *ppLoc != NULL; *ppPre = *ppLoc, *ppLoc = (*ppLoc)->next){
+		if((*ppLoc)->pcb->pid == pcb->pid)
+			return TRUE;
+		else if((*ppLoc)->pcb->pid > pcb->pid)
+			break;
 	}
-	else {
-		pQueue->rear->next = Newptr;
-		pQueue->rear = Newptr;
-	}
-
-	pQueue->count++;
+	return FALSE;
 }
 
-ITEM Dequeue(Queue *pQueue){
-	PROCESS *deleteLoc = NULL;
-	ITEM item;
+void insertQueue(Queue *p, PROCESS *pPre, PCB *pcb){
+	PROCESS *New_process = (PROCESS*)malloc(sizeof(PROCESS));
+	New_process->pcb = pcb;
 
-	if(pQueue->count == 0)
-		return 0;
-
-	deleteLoc = pQueue->front;
-	item = deleteLoc->item;
-
-	if(pQueue->count ==1){
-		pQueue->front = pQueue->rear = NULL;
+	if(pPre == NULL){
+		New_process->next = p->head;
+		p->head = New_process;
 	}
-	else {
-		pQueue->front = deleteLoc->item;
+	else{
+		New_process->next = pPre->next;
+		pPre->next = New_process;
 	}
-
-	free(deleteLoc);
-	pQueue->count--;
-
-	return item;
+	p->count++;
 }
 
-void DestroyQueue(Queue *pQueue){
-	PROCESS *pCur = NULL, *pNext = NULL;
+pcb *deleteQueue(Queue *p, PROCESS *pPre, PROCESS *pLoc){
+	PROCESS *temp = NULL;
+	temp = pLoc->pcb;
 
-	for(pCur = pQueue->front; pCur!=NULL; pCur=pNext){
-		pNext = pCur->next;
-		free(pCur);
-	}
-	pQueue->count = 0;
-	pQueue->front = pQueue->rear = NULL;
+	if(pPre == NULL)
+		p->head = pLoc->next;
+	else
+		pPre->next = pLoc->next;
 
-	free(pQueue);
+	free(pLoc);
+	p->count--;
+	return temp;
 }
 
+void addprocess(Queue *p, PCB *pcb){
+	PROCESS *pPre = NULL, *pLoc = NULL;
+	int found;
+	found = SearchQueue(p, &pPre, &pLoc, pcb);
+	if(!found)
+		insertQueue(p, pPre, pcb);
+}
 
+pcb* removeprocess(Queue *p, PCB *pcb){
+	PROCESS *pPre = NULL, *pLoc = NULL;
+	pcb *temp = NULL;
+	int found;
 
+	found = SearchQueue(p, &pPre, &pLoc, pcb);
+	if(found)
+		temp = deleteQueue(p, pPre, pLoc);
+	return temp;
+}
+
+void destroyprocess(Queue *p){
+	PROCESS *pDel = NULL, *pNext = NULL;
+	for(pDel = p->head; pDel != NULL; pDel = pNext){
+		pNext = pDel->next;
+		free(pDel);
+	}
+	free(p);
+}
