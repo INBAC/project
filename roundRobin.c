@@ -89,9 +89,13 @@ void singleTick(int signo)
 void cpuAction(int signo)
 {
 	/*scheduled burst value*/--;
+	printf("User Process: %d with CPU burst value of: %d\n", getpid(), /*scheduled burst value*/);
 	kill(kernelPID, SIGUSR2);
 	if(/*scheduled burst value*/ ==  0)
+	{
+		printf("User Process: %d finished!\n", getpid());
 		exit(0);
+	}
 }
 
 void afterAction(int signo)
@@ -100,5 +104,6 @@ void afterAction(int signo)
 		//enqueue scheduled burst value and scheduled pid
 
 	if(/*if queue is empty*/)
+		printf("All Finished! Shutting Down\n");
 		exit(0);
 }
