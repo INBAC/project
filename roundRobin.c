@@ -9,30 +9,53 @@
 #include<sys/types.h>
 #include<sys/wait.h>
 
-#define TICK_TIME 50
+#define TICK_TIME 500000
 #define USER_PROCESS_NUM 10
 
+void singleTick(int signo);
+void cpuAction(int signo);
 
-
-void main()
+int main()
 {
 	int i = 0;
-	int CPUburst[USER_PROCESS_NUM];
 	pid_t pid[USER_PROCESS_NUM];
+	struct sigaction oldKernalAction;
+	struct sigaction kernalAction;
 
 	srand((int)time(NULL));
+	memset(&kernalAction, 0, sizeof(kernalAction));
+	kernalAction.sa_handler = &singleTick;
+	sigaction(SIGALRM, &kernalAction, &oldKernalAction);
+
 	for(i = 0; i < USER_PROCESS_NUM; i++)
 	{
 		pid[i] = fork();
 		if(pid[i] == 0)
 		{
-			exit(0);
+
 		}
-		else if(pid[i] < 0)
+		else it(pid[i] < 0)
 		{
 		    perror("fork");
 		    abort();
 		}
 	}
+
+	struct itimerval new_itimer, old_itimer;
+	new_itimer.it_interval.tv_sec = 0;
+	new_itimer.it_interval.tv_usec = TICK_TIME;
+	new_itimer.it_value.tv_sec = 0;
+	new_itimer.it_value.tv_usec = TICK_TIME;
+	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
+}
+
+void singleTick(int signo)
+{
+
+}
+
+
+void cpuAction(int signo)
+{
 
 }
