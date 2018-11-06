@@ -3,8 +3,9 @@
 
 #define FALSE 0
 #define TRUE 1
+
 typedef struct {
-	int pid;
+	pid_t pid;
 	int CPU_burst;
 } PCB;
 

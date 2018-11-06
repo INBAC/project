@@ -8,6 +8,7 @@
 #include<sys/time.h>
 #include<sys/types.h>
 #include<sys/wait.h>
+#include"queue.h"
 
 #define TICK_TIME 2
 #define BURST_RANGE 10
@@ -17,7 +18,8 @@ void singleTick(int signo);
 void cpuAction(int signo);
 void afterAction(int signo);
 
-//scheduled process structure
+PCB *scheduled_pcb;
+Queue *runQueue;
 pid_t kernelPID;
 
 int main()
@@ -29,6 +31,10 @@ int main()
 	struct sigaction oldkernelBeforeAction;
 	struct sigaction kernelAfterAction;
 	struct sigaction oldkernelAfterAction;
+
+	runQueue = (Queue*)malloc(sizeof(Queue));
+	scheduled_pcb = (PCB*)malloc(sizeof(PCB));
+	runQueue = CreateQueue();
 	//create run queue
 
 	memset(&kernelBeforeAction, 0, sizeof(kernelBeforeAction));
@@ -42,28 +48,30 @@ int main()
 	kernelPID = getpid();
 	printf("Kernel PID: %d\n", (int)kernelPID);
 
-	for(i = 0; i < USER_PROCESS_NUM; i++)
-	{
+	for(i = 0; i < USER_PROCESS_NUM; i++){
 		random[i] = (rand() % BURST_RANGE) + 1;
 		pid[i] = fork();
-		if(pid[i] == 0)
-		{
+		if(pid[i] == 0){
 			struct sigaction userAction;
 			struct sigaction oldUserAction;
 			memset(&userAction, 0, sizeof(userAction));
 			userAction.sa_handler = &cpuAction;
-			sigaction(SIGUSR1, &userAction, &oldUserAction)
+			sigaction(SIGUSR1, &userAction, &oldUserAction);
 		}
-		else it(pid[i] < 0)
-		{
+		else if(pid[i] < 0){
 		    perror("fork");
-		    abort();
+		    exit(0);
 		}
 	}
+
+	PCB *temp_pcb = (PCB*)malloc(sizeof(PCB));
 
 	for(i = 0; i < USER_PROCESS_NUM; i++)
 	{
 		printf("User Process: %d with CPU burst value of: %d\n", (int)pid[i], random[i]);
+		temp_pcb->pid = pid[i];
+		temp_pcb->CPU_burst = random[i];
+		addprocess(runQueue, temp_pcb);
 		//enqueue all random CPU burst value and PID
 	}
 
@@ -80,18 +88,20 @@ int main()
 
 void singleTick(int signo)
 {
+	scheduled_pcb = removeprocess(runQueue, runQueue->head->pcb);
 	//dequeue run queue
 	//save to scheduled process
-	kill(/*scheduled pid*/, SIGUSR1);
+
+	kill(scheduled_pcb->pid, SIGUSR1);
 }
 
 
 void cpuAction(int signo)
 {
-	/*scheduled burst value*/--;
-	printf("User Process: %d with CPU burst value of: %d\n", getpid(), /*scheduled burst value*/);
+	scheduled_pcb -> CPU_burst--;
+	printf("User Process: %d with CPU burst value of: %d\n", getpid(), scheduled_pcb -> CPU_burst);
 	kill(kernelPID, SIGUSR2);
-	if(/*scheduled burst value*/ ==  0)
+	if(scheduled_pcb -> CPU_burst ==  0)
 	{
 		printf("User Process: %d finished!\n", getpid());
 		exit(0);
@@ -100,10 +110,10 @@ void cpuAction(int signo)
 
 void afterAction(int signo)
 {
-	if(/*scheduled burst value*/ != 0)
-		//enqueue scheduled burst value and scheduled pid
+	if(scheduled_pcb -> CPU_burst != 0)
+		addprocess(runQueue, scheduled_pcb);
 
-	if(/*if queue is empty*/)
+	if(runQueue->count == 0 )
 		printf("All Finished! Shutting Down\n");
 		exit(0);
 }
