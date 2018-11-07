@@ -4,9 +4,10 @@
 #define FALSE 0
 #define TRUE 1
 
-typedef struct {
-	pid_t pid;
-	int CPU_burst;
+typedef struct PCB{
+	int pid;
+	int remain_CPU_burst;
+	int remain_CPU_TIME_QUANTUM;
 } PCB;
 
 typedef struct PROCESS{
@@ -14,7 +15,7 @@ typedef struct PROCESS{
 		struct PROCESS *next;
 } PROCESS;
 
-typedef struct {
+typedef struct Queue{
 	int count;
 	PROCESS *head;
 	PROCESS *pos;
@@ -32,8 +33,8 @@ int SearchQueue(Queue *p, PROCESS **ppPre, PROCESS **ppLoc, PCB *pcb){
 	for(*ppPre = NULL, *ppLoc = p->head; *ppLoc != NULL; *ppPre = *ppLoc, *ppLoc = (*ppLoc)->next){
 		if((*ppLoc)->pcb->pid == pcb->pid)
 			return TRUE;
-		else if((*ppLoc)->pcb->pid > pcb->pid)
-			break;
+	//	else if((*ppLoc)->pcb->pid > pcb->pid)
+	//		break;
 	}
 	return FALSE;
 }

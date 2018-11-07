@@ -22,11 +22,13 @@ PCB *scheduled_pcb;
 Queue *runQueue;
 pid_t kernelPID;
 
+int cpu_burst[USER_PROCESS_NUM];
+pid_t pid[USER_PROCESS_NUM];
+
 int main()
 {
 	int i = 0;
-	int random[USER_PROCESS_NUM];
-	pid_t pid[USER_PROCESS_NUM];
+
 	struct sigaction kernelBeforeAction;
 	struct sigaction oldkernelBeforeAction;
 	struct sigaction kernelAfterAction;
@@ -35,7 +37,6 @@ int main()
 	runQueue = (Queue*)malloc(sizeof(Queue));
 	scheduled_pcb = (PCB*)malloc(sizeof(PCB));
 	runQueue = CreateQueue();
-	//create run queue
 
 	memset(&kernelBeforeAction, 0, sizeof(kernelBeforeAction));
 	memset(&kernelAfterAction, 0, sizeof(kernelAfterAction));
@@ -49,9 +50,11 @@ int main()
 	printf("Kernel PID: %d\n", (int)kernelPID);
 
 	for(i = 0; i < USER_PROCESS_NUM; i++){
-		random[i] = (rand() % BURST_RANGE) + 1;
 		pid[i] = fork();
-		if(pid[i] == 0){
+		cpu_burst[i] = (rand() % BURST_RANGE) + 1;
+		printf("NUMBER Of pid[i]-------- : %d\n", pid[i]);
+		if(pid[i] == 0){		//child
+			printf("NUMBER Of pid[i] : %d\n", pid[i]);
 			struct sigaction userAction;
 			struct sigaction oldUserAction;
 			memset(&userAction, 0, sizeof(userAction));
@@ -63,16 +66,15 @@ int main()
 		    exit(0);
 		}
 	}
-
+	printf("NUMBER Of pid[i] : %d\n", pid[i]);
 	PCB *temp_pcb = (PCB*)malloc(sizeof(PCB));
 
 	for(i = 0; i < USER_PROCESS_NUM; i++)
 	{
-		printf("User Process: %d with CPU burst value of: %d\n", (int)pid[i], random[i]);
+		printf("User Process: %d with CPU burst value of: %d\n", (int)pid[i], cpu_burst[i]);
 		temp_pcb->pid = pid[i];
-		temp_pcb->CPU_burst = random[i];
+		temp_pcb->CPU_burst = cpu_burst[i];
 		addprocess(runQueue, temp_pcb);
-		//enqueue all random CPU burst value and PID
 	}
 
 	struct itimerval new_itimer, old_itimer;
@@ -89,23 +91,20 @@ int main()
 void singleTick(int signo)
 {
 	scheduled_pcb = removeprocess(runQueue, runQueue->head->pcb);
-	//dequeue run queue
-	//save to scheduled process
-
 	kill(scheduled_pcb->pid, SIGUSR1);
 }
 
 
 void cpuAction(int signo)
 {
-	scheduled_pcb -> CPU_burst--;
+	scheduled_pcb->CPU_burst--;
 	printf("User Process: %d with CPU burst value of: %d\n", getpid(), scheduled_pcb -> CPU_burst);
-	kill(kernelPID, SIGUSR2);
 	if(scheduled_pcb -> CPU_burst ==  0)
 	{
 		printf("User Process: %d finished!\n", getpid());
 		exit(0);
 	}
+	kill(kernelPID, SIGUSR2);
 }
 
 void afterAction(int signo)
