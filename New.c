@@ -72,7 +72,8 @@ int main()
 	new_itimer.it_value.tv_usec = 0;
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer); // First signal은 1초후에 울림
 
-	while (1);  //while loop를 까먹으면 signal이고 뭐고 아무것도 없다
+	while (readyQueue->count != 0);  //while loop를 까먹으면 signal이고 뭐고 아무것도 없다
+	printf("WHOOOOO FINISHED!!!!!\n");
 	exit(0);
 }
 
@@ -85,14 +86,24 @@ void parent_handler(int signo){
 
 	present_pcb -> remain_CPU_TIME_QUANTUM--;
 	present_pcb -> remain_CPU_burst--;
-	if(present_pcb -> remain_CPU_TIME_QUANTUM == 0 || present_pcb -> remain_CPU_burst == 0){
-		present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+	if(present_pcb -> remain_CPU_burst != 0)
+	{
+		if(present_pcb -> remain_CPU_TIME_QUANTUM == 0){
+			present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+			removeprocess(readyQueue, present_pcb);
+			addprocess(readyQueue, present_pcb);
+			if((next_process_pcb = scheduler()) != NULL){
+				present_pcb = next_process_pcb;
+				}
+			}
+	}
+	else
+	{
 		removeprocess(readyQueue, present_pcb);
-		addprocess(readyQueue, present_pcb);
 		if((next_process_pcb = scheduler()) != NULL){
 			present_pcb = next_process_pcb;
 			}
-		}
+	}
 	kill(present_pcb -> pid, SIGALRM);
 }
 
