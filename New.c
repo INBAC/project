@@ -10,7 +10,7 @@
 #include<sys/wait.h>
 #include"queue.h"
 
-#define CPU_TIME_QUANTUM 4
+#define CPU_TIME_QUANTUM 5
 #define USER_PROCESS_NUM 10
 
 void parent_handler(int signo);
@@ -20,12 +20,10 @@ PCB* scheduler();
 
 struct PCB *pcb[10];		// For All pcb
 struct PCB *present_pcb;	// For present job
-struct Queue *runQueue;		// main queue
+struct Queue *readyQueue;		// main queue
 
 int remain_cpu_burst;
 int cpu_burst[USER_PROCESS_NUM];
-
-int countPID = 0;
 
 int main()
 {
@@ -35,8 +33,8 @@ int main()
 	struct sigaction old_sa, new_sa;
 	struct itimerval new_itimer, old_itimer;
 
-	runQueue = (Queue*)malloc(sizeof(Queue));
-	runQueue = CreateQueue();
+	readyQueue = (Queue*)malloc(sizeof(Queue));
+	readyQueue = CreateQueue();
 
 	srand((int)time(NULL));
 	for(int i = 0; i < USER_PROCESS_NUM ; i++) {
@@ -50,7 +48,6 @@ int main()
 			// child
 			printf("child process with pid %d\n", getpid());
 			child_action(cpu_burst[i]);
-			exit(0);
 			}
 		else {
 			// parent
@@ -60,7 +57,7 @@ int main()
 			pcb[i]->pid = pid;
 			pcb[i]->remain_CPU_burst = cpu_burst[i];
 			pcb[i]->remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
-			addprocess(runQueue, pcb[i]);
+			addprocess(readyQueue, pcb[i]);
 			}
 		}
 
@@ -87,10 +84,11 @@ void parent_handler(int signo){
 		}
 
 	present_pcb -> remain_CPU_TIME_QUANTUM--;
-	if(present_pcb -> remain_CPU_TIME_QUANTUM == 0){
+	present_pcb -> remain_CPU_burst--;
+	if(present_pcb -> remain_CPU_TIME_QUANTUM == 0 || present_pcb -> remain_CPU_burst == 0){
 		present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
-		removeprocess(runQueue, present_pcb);
-		addprocess(runQueue, present_pcb);
+		removeprocess(readyQueue, present_pcb);
+		addprocess(readyQueue, present_pcb);
 		if((next_process_pcb = scheduler()) != NULL){
 			present_pcb = next_process_pcb;
 			}
@@ -108,7 +106,7 @@ void child_action(int cpu_burst)
 	sigaction(SIGALRM, &newchild_sa, &oldchild_sa);		/// ALARM 종류를 어떤 기준으로 설정 할 것인가?
 	while(remain_cpu_burst > 0);
 	////////////kill()
-	printf("PID %d EXIT %d\n", getpid(), countPID);
+	printf("PID %d EXIT\n", getpid());
 	exit(0);
 }
 
@@ -118,10 +116,27 @@ void child_handler(int signo){
 }
 
 PCB* scheduler(){
-	if(runQueue->count != 0)			//만약 runqueue (readyquque)에 카운트가 0이 아니라면 -> 뭐라도 잇다면
-		return runQueue->head->pcb;
+	if(readyQueue->count != 0)			//만약 readyQueue (readyquque)에 카운트가 0이 아니라면 -> 뭐라도 잇다면
+		return readyQueue->head->pcb;
 	else
 		return NULL;
 }
 
 
+
+/*
+if(present_pcb == NULL){
+	present_pcb = scheduler();
+}
+present_pcb = removeprocess(readyQueue, present_pcb);
+present_pcb -> remain_CPU_TIME_QUANTUM--;
+
+if(present_pcb -> remain_CPU_TIME_QUANTUM == 0){
+	present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+	addprocess(readyQueue, present_pcb);
+	if((next_process_pcb = scheduler()) != NULL){
+		present_pcb = next_process_pcb;
+		}
+	}
+kill(present_pcb -> pid, SIGALRM);
+*/
