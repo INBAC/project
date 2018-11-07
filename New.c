@@ -24,6 +24,7 @@ struct Queue *readyQueue;		// main queue
 
 int remain_cpu_burst;
 int cpu_burst[USER_PROCESS_NUM];
+int globaltime = 0;
 
 int main()
 {
@@ -39,6 +40,7 @@ int main()
 	srand((int)time(NULL));
 	for(int i = 0; i < USER_PROCESS_NUM ; i++) {
 		cpu_burst[i] = (rand() % 10) + 1;
+		globaltime = globaltime + cpu_burst[i];
 		pid = fork();
 		if (pid < -1) {
 			perror("fork error");
@@ -70,14 +72,35 @@ int main()
 	new_itimer.it_interval.tv_usec = 0;
 	new_itimer.it_value.tv_sec = 1;
 	new_itimer.it_value.tv_usec = 0;
-	setitimer(ITIMER_REAL, &new_itimer, &old_itimer); // First signal은 1초후에 울림
+	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
 
-	while (readyQueue->count != 0);  //while loop를 까먹으면 signal이고 뭐고 아무것도 없다
-	printf("WHOOOOO FINISHED!!!!!\n");
+	while(globaltime > 0);
 	exit(0);
 }
 
 void parent_handler(int signo){
+	globaltime--;
+	if(present_pcb == NULL)
+		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
+
+	present_pcb -> remain_CPU_TIME_QUANTUM--;
+	present_pcb -> remain_CPU_burst--;
+	kill(present_pcb -> pid, SIGUSR1);
+	if(present_pcb -> remain_CPU_burst != 0)
+	{
+		if(present_pcb -> remain_CPU_TIME_QUANTUM == 0)
+		{
+			present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+			addprocess(readyQueue, present_pcb);
+			present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
+		}
+	}
+	else if(readyQueue->count != 0)
+	{
+		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
+	}
+
+/*	globaltime--;
 	PCB *next_process_pcb = NULL;
 
 	if(present_pcb == NULL){
@@ -102,9 +125,9 @@ void parent_handler(int signo){
 		removeprocess(readyQueue, present_pcb);
 		if((next_process_pcb = scheduler()) != NULL){
 			present_pcb = next_process_pcb;
-			}
 	}
-	kill(present_pcb -> pid, SIGALRM);
+	kill(present_pcb -> pid, SIGUSR1);
+*/
 }
 
 void child_action(int cpu_burst)
@@ -114,9 +137,8 @@ void child_action(int cpu_burst)
 
 	memset(&newchild_sa, 0, sizeof(newchild_sa));
 	newchild_sa.sa_handler = &child_handler;
-	sigaction(SIGALRM, &newchild_sa, &oldchild_sa);		/// ALARM 종류를 어떤 기준으로 설정 할 것인가?
+	sigaction(SIGUSR1, &newchild_sa, &oldchild_sa);
 	while(remain_cpu_burst > 0);
-	////////////kill()
 	printf("PID %d EXIT\n", getpid());
 	exit(0);
 }
@@ -127,27 +149,8 @@ void child_handler(int signo){
 }
 
 PCB* scheduler(){
-	if(readyQueue->count != 0)			//만약 readyQueue (readyquque)에 카운트가 0이 아니라면 -> 뭐라도 잇다면
+	if(readyQueue->count != 0)
 		return readyQueue->head->pcb;
 	else
 		return NULL;
 }
-
-
-
-/*
-if(present_pcb == NULL){
-	present_pcb = scheduler();
-}
-present_pcb = removeprocess(readyQueue, present_pcb);
-present_pcb -> remain_CPU_TIME_QUANTUM--;
-
-if(present_pcb -> remain_CPU_TIME_QUANTUM == 0){
-	present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
-	addprocess(readyQueue, present_pcb);
-	if((next_process_pcb = scheduler()) != NULL){
-		present_pcb = next_process_pcb;
-		}
-	}
-kill(present_pcb -> pid, SIGALRM);
-*/
