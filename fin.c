@@ -8,10 +8,13 @@
 #include<sys/time.h>
 #include<sys/types.h>
 #include<sys/wait.h>
+#include<sys/ipc.h>
+#include<sys/msg.h>
 #include"queue.h"
 
 #define CPU_TIME_QUANTUM 5
 #define USER_PROCESS_NUM 10
+#define MSG_KEY 0xa3214
 
 void parent_handler(int signo);
 void child_action(int cpu_burst);
@@ -130,13 +133,14 @@ void child_handler(int signo){
 	printf("Proc (%d) remaining cpu time is : %d\n", getpid(), remain_cpu_burst);
 	remain_cpu_burst--;
 	if(remain_cpu_burst == 0){
-		/// SEND MESSAGE TO PARENTS
 		io_action();
 	}
 }
 
 void io_action()
 {
+	int msgq;
+	int ret;
 
 }
 

@@ -17,6 +17,7 @@ void parent_handler(int signo);
 void end_handler(int signo);
 void child_action();
 void child_handler(int signo);
+void io_action();
 
 struct PCB *pcb[10];		// For All pcb
 struct PCB *present_pcb;	// For present job
@@ -128,8 +129,18 @@ void child_handler(int signo){
 	printf("Proc (%d) remaining cpu time is : %d\n", getpid(), remain_cpu_burst);
 	remain_cpu_burst--;
 	if(remain_cpu_burst == 0){
-		pcb[i]->remain_CPU_TIME_QUANTUM = 0;
-		kill(parentPID, SIGUSR2);
-		exit(0);
+		io_action();
 	}
 }
+
+void io_action(){
+
+}
+
+
+
+
+
+
+
+

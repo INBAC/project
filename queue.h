@@ -97,3 +97,9 @@ void destroyQueue(Queue *p){
 	}
 	free(p);
 }
+
+void priority_queue(Queue *p, PCB *pcb){
+	pcb->remain_IO_burst;
+
+
+}

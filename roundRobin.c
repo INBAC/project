@@ -99,35 +99,6 @@ void parent_handler(int signo){
 	{
 		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
 	}
-
-/*	globaltime--;
-	PCB *next_process_pcb = NULL;
-
-	if(present_pcb == NULL){
-		present_pcb = scheduler();
-		}
-
-	present_pcb -> remain_CPU_TIME_QUANTUM--;
-	present_pcb -> remain_CPU_burst--;
-	if(present_pcb -> remain_CPU_burst != 0)
-	{
-		if(present_pcb -> remain_CPU_TIME_QUANTUM == 0){
-			present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
-			removeprocess(readyQueue, present_pcb);
-			addprocess(readyQueue, present_pcb);
-			if((next_process_pcb = scheduler()) != NULL){
-				present_pcb = next_process_pcb;
-				}
-			}
-	}
-	else
-	{
-		removeprocess(readyQueue, present_pcb);
-		if((next_process_pcb = scheduler()) != NULL){
-			present_pcb = next_process_pcb;
-	}
-	kill(present_pcb -> pid, SIGUSR1);
-*/
 }
 
 void child_action(int cpu_burst)
