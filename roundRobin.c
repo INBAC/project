@@ -10,109 +10,147 @@
 #include<sys/wait.h>
 #include"queue.h"
 
-#define TICK_TIME 2
-#define BURST_RANGE 10
+#define CPU_TIME_QUANTUM 5
 #define USER_PROCESS_NUM 10
 
-void singleTick(int signo);
-void cpuAction(int signo);
-void afterAction(int signo);
+void parent_handler(int signo);
+void child_action(int cpu_burst);
+void child_handler(int signo);
+PCB* scheduler();
 
-PCB *scheduled_pcb;
-Queue *runQueue;
-pid_t kernelPID;
+struct PCB *pcb[10];		// For All pcb
+struct PCB *present_pcb;	// For present job
+struct Queue *readyQueue;		// main queue
 
+int remain_cpu_burst;
 int cpu_burst[USER_PROCESS_NUM];
-pid_t pid[USER_PROCESS_NUM];
+int globaltime = 0;
 
 int main()
 {
-	int i = 0;
+	pid_t pid;
+	int i;
 
-	struct sigaction kernelBeforeAction;
-	struct sigaction oldkernelBeforeAction;
-	struct sigaction kernelAfterAction;
-	struct sigaction oldkernelAfterAction;
+	struct sigaction old_sa, new_sa;
+	struct itimerval new_itimer, old_itimer;
 
-	runQueue = (Queue*)malloc(sizeof(Queue));
-	scheduled_pcb = (PCB*)malloc(sizeof(PCB));
-	runQueue = CreateQueue();
-
-	memset(&kernelBeforeAction, 0, sizeof(kernelBeforeAction));
-	memset(&kernelAfterAction, 0, sizeof(kernelAfterAction));
-	kernelBeforeAction.sa_handler = &singleTick;
-	kernelAfterAction.sa_handler = &afterAction;
-	sigaction(SIGALRM, &kernelBeforeAction, &oldkernelBeforeAction);
-	sigaction(SIGUSR2, &kernelAfterAction, &oldkernelAfterAction);
+	readyQueue = (Queue*)malloc(sizeof(Queue));
+	readyQueue = CreateQueue();
 
 	srand((int)time(NULL));
-	kernelPID = getpid();
-	printf("Kernel PID: %d\n", (int)kernelPID);
-
-	for(i = 0; i < USER_PROCESS_NUM; i++){
-		pid[i] = fork();
-		cpu_burst[i] = (rand() % BURST_RANGE) + 1;
-		printf("NUMBER Of pid[i]-------- : %d\n", pid[i]);
-		if(pid[i] == 0){		//child
-			printf("NUMBER Of pid[i] : %d\n", pid[i]);
-			struct sigaction userAction;
-			struct sigaction oldUserAction;
-			memset(&userAction, 0, sizeof(userAction));
-			userAction.sa_handler = &cpuAction;
-			sigaction(SIGUSR1, &userAction, &oldUserAction);
+	for(int i = 0; i < USER_PROCESS_NUM ; i++) {
+		cpu_burst[i] = (rand() % 10) + 1;
+		globaltime = globaltime + cpu_burst[i];
+		pid = fork();
+		if (pid < -1) {
+			perror("fork error");
+			return 0;
+			}
+		else if (pid == 0) {
+			// child
+			printf("child process with pid %d\n", getpid());
+			child_action(cpu_burst[i]);
+			}
+		else {
+			// parent
+			printf("my pid is %d\n", getpid());
+			pcb[i] = (PCB*)malloc(sizeof(PCB));
+			memset(pcb[i], 0, sizeof(PCB));
+			pcb[i]->pid = pid;
+			pcb[i]->remain_CPU_burst = cpu_burst[i];
+			pcb[i]->remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+			addprocess(readyQueue, pcb[i]);
+			}
 		}
-		else if(pid[i] < 0){
-		    perror("fork");
-		    exit(0);
-		}
-	}
-	printf("NUMBER Of pid[i] : %d\n", pid[i]);
-	PCB *temp_pcb = (PCB*)malloc(sizeof(PCB));
 
-	for(i = 0; i < USER_PROCESS_NUM; i++)
-	{
-		printf("User Process: %d with CPU burst value of: %d\n", (int)pid[i], cpu_burst[i]);
-		temp_pcb->pid = pid[i];
-		temp_pcb->CPU_burst = cpu_burst[i];
-		addprocess(runQueue, temp_pcb);
-	}
+	memset(&new_sa, 0, sizeof(new_sa));
+	new_sa.sa_handler = &parent_handler;
+	sigaction(SIGALRM, &new_sa, &old_sa);
 
-	struct itimerval new_itimer, old_itimer;
-	new_itimer.it_interval.tv_sec = TICK_TIME;
+	//timer setting
+	new_itimer.it_interval.tv_sec = 1;
 	new_itimer.it_interval.tv_usec = 0;
-	new_itimer.it_value.tv_sec = TICK_TIME;
+	new_itimer.it_value.tv_sec = 1;
 	new_itimer.it_value.tv_usec = 0;
-	printf("\n*********Time Starts Now*********\n\n");
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
 
-	while(1);
+	while(globaltime > 0);
+	exit(0);
 }
 
-void singleTick(int signo)
-{
-	scheduled_pcb = removeprocess(runQueue, runQueue->head->pcb);
-	kill(scheduled_pcb->pid, SIGUSR1);
-}
+void parent_handler(int signo){
+	globaltime--;
+	if(present_pcb == NULL)
+		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
 
-
-void cpuAction(int signo)
-{
-	scheduled_pcb->CPU_burst--;
-	printf("User Process: %d with CPU burst value of: %d\n", getpid(), scheduled_pcb -> CPU_burst);
-	if(scheduled_pcb -> CPU_burst ==  0)
+	present_pcb -> remain_CPU_TIME_QUANTUM--;
+	present_pcb -> remain_CPU_burst--;
+	kill(present_pcb -> pid, SIGUSR1);
+	if(present_pcb -> remain_CPU_burst != 0)
 	{
-		printf("User Process: %d finished!\n", getpid());
-		exit(0);
+		if(present_pcb -> remain_CPU_TIME_QUANTUM == 0)
+		{
+			present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+			addprocess(readyQueue, present_pcb);
+			present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
+		}
 	}
-	kill(kernelPID, SIGUSR2);
+	else if(readyQueue->count != 0)
+	{
+		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
+	}
+
+/*	globaltime--;
+	PCB *next_process_pcb = NULL;
+
+	if(present_pcb == NULL){
+		present_pcb = scheduler();
+		}
+
+	present_pcb -> remain_CPU_TIME_QUANTUM--;
+	present_pcb -> remain_CPU_burst--;
+	if(present_pcb -> remain_CPU_burst != 0)
+	{
+		if(present_pcb -> remain_CPU_TIME_QUANTUM == 0){
+			present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
+			removeprocess(readyQueue, present_pcb);
+			addprocess(readyQueue, present_pcb);
+			if((next_process_pcb = scheduler()) != NULL){
+				present_pcb = next_process_pcb;
+				}
+			}
+	}
+	else
+	{
+		removeprocess(readyQueue, present_pcb);
+		if((next_process_pcb = scheduler()) != NULL){
+			present_pcb = next_process_pcb;
+	}
+	kill(present_pcb -> pid, SIGUSR1);
+*/
 }
 
-void afterAction(int signo)
+void child_action(int cpu_burst)
 {
-	if(scheduled_pcb -> CPU_burst != 0)
-		addprocess(runQueue, scheduled_pcb);
+	struct sigaction oldchild_sa, newchild_sa;
+	remain_cpu_burst = cpu_burst;
 
-	if(runQueue->count == 0 )
-		printf("All Finished! Shutting Down\n");
-		exit(0);
+	memset(&newchild_sa, 0, sizeof(newchild_sa));
+	newchild_sa.sa_handler = &child_handler;
+	sigaction(SIGUSR1, &newchild_sa, &oldchild_sa);
+	while(remain_cpu_burst > 0);
+	printf("PID %d EXIT\n", getpid());
+	exit(0);
+}
+
+void child_handler(int signo){
+	printf("Proc (%d) remaining cpu time is : %d\n", getpid(), remain_cpu_burst);
+	remain_cpu_burst--;
+}
+
+PCB* scheduler(){
+	if(readyQueue->count != 0)
+		return readyQueue->head->pcb;
+	else
+		return NULL;
 }
