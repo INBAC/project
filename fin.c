@@ -10,22 +10,22 @@
 #include<sys/wait.h>
 #include"queue.h"
 
-#define CPU_TIME_QUANTUM 3
-#define USER_PROCESS_NUM 5
+#define CPU_TIME_QUANTUM 5
+#define USER_PROCESS_NUM 10
 
 void parent_handler(int signo);
-void end_handler(int signo);
-void child_action();
+void child_action(int cpu_burst);
 void child_handler(int signo);
+void io_action();
 
 struct PCB *pcb[10];		// For All pcb
 struct PCB *present_pcb;	// For present job
 struct Queue *readyQueue;		// main queue
+struct Queue *waitQueue;		// wait queue
 
 int remain_cpu_burst;
-int parentPID;
-int end_flag = 0;
-int end_count = 0;
+int cpu_burst[USER_PROCESS_NUM];
+int globaltime = 0;
 
 int main()
 {
@@ -33,14 +33,17 @@ int main()
 	int i;
 
 	struct sigaction old_sa, new_sa;
-	struct sigaction old_endtimer, new_endtimer;
 	struct itimerval new_itimer, old_itimer;
 
-	parentPID = getpid();
 	readyQueue = (Queue*)malloc(sizeof(Queue));
+	waitQueue = (Queue*)malloc(sizeof(Queue));
 	readyQueue = CreateQueue();
+	waitQueue = CreateQueue();
 
+	srand((int)time(NULL));
 	for(int i = 0; i < USER_PROCESS_NUM ; i++) {
+		cpu_burst[i] = (rand() % 10) + 1;
+		globaltime = globaltime + cpu_burst[i];
 		pid = fork();
 		if (pid < -1) {
 			perror("fork error");
@@ -49,8 +52,7 @@ int main()
 		else if (pid == 0) {
 			// child
 			printf("child process with pid %d\n", getpid());
-			srand((int)time(NULL)+i);
-			child_action();
+			child_action(cpu_burst[i]);
 			}
 		else {
 			// parent
@@ -58,17 +60,15 @@ int main()
 			pcb[i] = (PCB*)malloc(sizeof(PCB));
 			memset(pcb[i], 0, sizeof(PCB));
 			pcb[i]->pid = pid;
+			pcb[i]->remain_CPU_burst = cpu_burst[i];
 			pcb[i]->remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
 			addprocess(readyQueue, pcb[i]);
 			}
 		}
 
 	memset(&new_sa, 0, sizeof(new_sa));
-	memset(&new_endtimer, 0, sizeof(new_endtimer));
 	new_sa.sa_handler = &parent_handler;
-	new_endtimer.sa_handler = &end_handler;
 	sigaction(SIGALRM, &new_sa, &old_sa);
-	sigaction(SIGUSR2, &new_endtimer, &old_endtimer);
 
 	//timer setting
 	new_itimer.it_interval.tv_sec = 1;
@@ -77,59 +77,68 @@ int main()
 	new_itimer.it_value.tv_usec = 0;
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer);
 
-	while(end_count < USER_PROCESS_NUM);
+	while(globaltime > 0){
+		///// Child에게 IPC 메세지를 수신하고 child의 I/O burst 시작여부 판단
+		///// 스케줄러는 해당 child를 readyQueue에서 remove하고 그 child를 waitQueue로 이동
+		///// 이때 받은 I/O burst 값을 parent는 기억하고 있어야 한다.
+		///// 1 TICK 마다 I/O burst value를 1씩 줄인다. (당연히 모든 waitQueue에 있는것들을)
+		///// 0이 되면 다시 이것을 runQueue로 가져 온다.
+		///// 참고로 총 실행(전체 실행 조건)은 TimeTick의 횟수로 정해준다.
+	};
 	exit(0);
 }
 
 void parent_handler(int signo){
+	globaltime--;
 	if(present_pcb == NULL)
 		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
 
 	present_pcb -> remain_CPU_TIME_QUANTUM--;
+	present_pcb -> remain_CPU_burst--;
 	kill(present_pcb -> pid, SIGUSR1);
-
-	if(end_flag == 0)
+	if(present_pcb -> remain_CPU_burst != 0)
 	{
 		if(present_pcb -> remain_CPU_TIME_QUANTUM == 0)
 		{
 			present_pcb -> remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
 			addprocess(readyQueue, present_pcb);
 			present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
-			end_flag = 0;
 		}
 	}
 	else if(readyQueue->count != 0)
 	{
 		present_pcb = removeprocess(readyQueue, readyQueue->head->pcb);
-		end_flag = 0;
-
 	}
-	else
-		end_flag = 0;
+
 }
 
-void end_handler(int signo){
-	end_flag = 1;
-	end_count++;
-}
-
-void child_action()
+void child_action(int cpu_burst)
 {
 	struct sigaction oldchild_sa, newchild_sa;
-	remain_cpu_burst = (rand() % 5) + 1;
+	remain_cpu_burst = cpu_burst;
 
 	memset(&newchild_sa, 0, sizeof(newchild_sa));
 	newchild_sa.sa_handler = &child_handler;
 	sigaction(SIGUSR1, &newchild_sa, &oldchild_sa);
-	while(1);
+
+	while(remain_cpu_burst > 0);
+	printf("PID %d EXIT\n", getpid());
+	exit(0);
 }
 
 void child_handler(int signo){
 	printf("Proc (%d) remaining cpu time is : %d\n", getpid(), remain_cpu_burst);
 	remain_cpu_burst--;
 	if(remain_cpu_burst == 0){
-		pcb[i]->remain_CPU_TIME_QUANTUM = 0;
-		kill(parentPID, SIGUSR2);
-		exit(0);
+		/// SEND MESSAGE TO PARENTS
+		io_action();
 	}
 }
+
+void io_action()
+{
+
+}
+
+
+

@@ -6,6 +6,8 @@
 
 typedef struct PCB{
 	int pid;
+
+	int remain_IO_burst;
 	int remain_CPU_burst;
 	int remain_CPU_TIME_QUANTUM;
 } PCB;
