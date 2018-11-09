@@ -6,9 +6,8 @@
 
 typedef struct PCB{
 	int pid;
-
+	int IO_burst;
 	int remain_IO_burst;
-	int remain_CPU_burst;
 	int remain_CPU_TIME_QUANTUM;
 } PCB;
 
@@ -35,8 +34,6 @@ int SearchQueue(Queue *p, PROCESS **ppPre, PROCESS **ppLoc, PCB *pcb){
 	for(*ppPre = NULL, *ppLoc = p->head; *ppLoc != NULL; *ppPre = *ppLoc, *ppLoc = (*ppLoc)->next){
 		if((*ppLoc)->pcb->pid == pcb->pid)
 			return TRUE;
-	//	else if((*ppLoc)->pcb->pid > pcb->pid)
-	//		break;
 	}
 	return FALSE;
 }
@@ -98,8 +95,34 @@ void destroyQueue(Queue *p){
 	free(p);
 }
 
-void priority_queue(Queue *p, PCB *pcb){
-	pcb->remain_IO_burst;
+void priorityEnqueue(Queue *p, PCB *pcb){
+	PROCESS *pPre = NULL
+	PROCESS *pLoc = NULL;
+	PROCESS *newProcess = (PROCESS*)malloc(sizeof(PROCESS));
+	newProcess->pcb = pcb;
+	if(p->count == 0)
+		addprocess(p, pcb);
 
+	pLoc = p->head;
+	pPre = NULL;
+	if(pLoc->pcb->IO_burst <= pcb->IO_burst)
+	{
+		p->head->next =
+	}
+	else
+	{
+		pPre = pLoc;
+		pLoc = pLoc->next;
+		for(; pLoc != NULL; pPre = pLoc, pLoc = pLoc->next)
+		{
+			if(pLoc->pcb->IO_burst <= pcb->IO_burst && pcb->IO_burst <= pPre->pcb->IO_burst)
+			{
+				addprocess
+			}
+		}
+		if(*ppLoc == NULL)
+		{
 
+		}
+	}
 }
