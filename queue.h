@@ -1,128 +1,119 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-#define FALSE 0
-#define TRUE 1
-
 typedef struct PCB{
 	int pid;
-	int IO_burst;
-	int remain_IO_burst;
-	int remain_CPU_TIME_QUANTUM;
-} PCB;
+	int ioBurst;
+	int remainingIoBurst;
+	int timeQuantum;
+}PCB;
 
-typedef struct PROCESS{
-		PCB *pcb;
-		struct PROCESS *next;
-} PROCESS;
+typedef struct NODE{
+	PCB *pcb;
+	struct NODE *next;
+}NODE;
 
-typedef struct Queue{
+typedef struct QUEUE{
 	int count;
-	PROCESS *head;
-	PROCESS *pos;
-} Queue;
+	NODE *head;
+	NODE *tail;
+}QUEUE;
 
-Queue *CreateQueue(){
-	Queue *NewQueue = (Queue*)malloc(sizeof(Queue));
-	NewQueue->pos = NULL;
-	NewQueue->head = NULL; //initialize
-	NewQueue->count = 0;
-	return NewQueue;
+
+QUEUE* createQueue()
+{
+	QUEUE *newQueue = (QUEUE*)malloc(sizeof(QUEUE));
+	newQueue->count = 0;
+	newQueue->head = NULL;
+	newQueue->tail = NULL;
+	return newQueue;
 }
 
-int SearchQueue(Queue *p, PROCESS **ppPre, PROCESS **ppLoc, PCB *pcb){
-	for(*ppPre = NULL, *ppLoc = p->head; *ppLoc != NULL; *ppPre = *ppLoc, *ppLoc = (*ppLoc)->next){
-		if((*ppLoc)->pcb->pid == pcb->pid)
-			return TRUE;
-	}
-	return FALSE;
-}
-
-void insertQueue(Queue *p, PROCESS *pPre, PCB *pcb){
-	PROCESS *New_process = (PROCESS*)malloc(sizeof(PROCESS));
-	New_process->pcb = pcb;
-
-	if(pPre == NULL){
-		New_process->next = p->head;
-		p->head = New_process;
-	}
-	else{
-		New_process->next = pPre->next;
-		pPre->next = New_process;
-	}
-	p->count++;
-}
-
-PCB *deleteQueue(Queue *p, PROCESS *pPre, PROCESS *pLoc){
-	PCB *temp = NULL;
-	temp = pLoc->pcb;
-
-	if(pPre == NULL)
-		p->head = pLoc->next;
-	else
-		pPre->next = pLoc->next;
-
-	free(pLoc);
-	p->count--;
-	return temp;
-}
-
-void addprocess(Queue *p, PCB *pcb){
-	PROCESS *pPre = NULL, *pLoc = NULL;
-	int found;
-	found = SearchQueue(p, &pPre, &pLoc, pcb);
-	if(!found)
-		insertQueue(p, pPre, pcb);
-}
-
-PCB* removeprocess(Queue *p, PCB *pcb){
-	PROCESS *pPre = NULL, *pLoc = NULL;
-	PCB *temp = NULL;
-	int found;
-
-	found = SearchQueue(p, &pPre, &pLoc, pcb);
-	if(found)
-		temp = deleteQueue(p, pPre, pLoc);
-	return temp;
-}
-
-void destroyQueue(Queue *p){
-	PROCESS *pDel = NULL, *pNext = NULL;
-	for(pDel = p->head; pDel != NULL; pDel = pNext){
-		pNext = pDel->next;
-		free(pDel);
-	}
-	free(p);
-}
-
-void priorityEnqueue(Queue *p, PCB *pcb){
-	PROCESS *pPre = NULL
-	PROCESS *pLoc = NULL;
-	PROCESS *newProcess = (PROCESS*)malloc(sizeof(PROCESS));
-	newProcess->pcb = pcb;
-	if(p->count == 0)
-		addprocess(p, pcb);
-
-	pLoc = p->head;
-	pPre = NULL;
-	if(pLoc->pcb->IO_burst <= pcb->IO_burst)
+PCB* dequeue(QUEUE *queue)
+{
+	if(queue->count != 0)
 	{
-		p->head->next =
-	}
-	else
-	{
-		pPre = pLoc;
-		pLoc = pLoc->next;
-		for(; pLoc != NULL; pPre = pLoc, pLoc = pLoc->next)
+		NODE *nodeTemp = queue->head;
+		PCB *pcbTemp = queue->head->pcb;
+		if(queue->count == 1)
 		{
-			if(pLoc->pcb->IO_burst <= pcb->IO_burst && pcb->IO_burst <= pPre->pcb->IO_burst)
+			queue->head = NULL;
+			queue->tail = NULL;
+			queue->count--;
+		}
+		else
+		{
+			queue->head = queue->head->next;
+			queue->count--;
+			nodeTemp->next = NULL;
+		}
+		free(nodeTemp);
+		return pcbTemp;
+	}
+	else
+		return NULL;
+}
+
+void enqueue(QUEUE *queue, PCB *pcb)
+{
+	NODE *newNode = (NODE*)malloc(sizeof(NODE));
+	newNode->pcb = pcb;
+	newNode->next = NULL;
+	if(queue->count == 0)
+	{
+		queue->head = newNode;
+		queue->tail = newNode;
+		queue->count++;
+	}
+	else
+	{
+		queue->tail->next = newNode;
+		queue->tail = queue->tail->next;
+		queue->count++;
+	}
+
+}
+
+void priorityEnqueue(QUEUE *queue, PCB *pcb)
+{
+	if(queue->count == 0)
+	{
+		pcb->remainingIoBurst = pcb->ioBurst;
+		enqueue(queue, pcb);
+		return;
+	}
+	int firstRun = 1;
+	NODE *past = NULL;
+	NODE *future = NULL;
+	NODE *present = (NODE*)malloc(sizeof(NODE));
+	present->pcb = pcb;
+	present->next = NULL;
+	for(future = queue->head, past = NULL; future != NULL; past = future, future = future->next)
+	{
+		if(present->pcb->ioBurst <= future->pcb->ioBurst)
+		{
+			if(firstRun == 1)
 			{
-				addprocess
+				present->pcb->remainingIoBurst = present->pcb->ioBurst;
+				queue->head->pcb->remainingIoBurst = queue->head->pcb->ioBurst - present->pcb->ioBurst;
+				present->next = queue->head;
+				queue->head = present;
+				queue->count++;
+				return;
+			}
+			else
+			{
+				present->pcb->remainingIoBurst = present->pcb->ioBurst - past->pcb->ioBurst;
+				future->pcb->remainingIoBurst = future->pcb->ioBurst - present->pcb->ioBurst;
+				past->next = present;
+				present->next = future;
+				queue->count++;
+				return;
 			}
 		}
-		if(*ppLoc == NULL)
-		{
-
-		}
+		firstRun = 0;
 	}
+	pcb->remainingIoBurst = pcb->ioBurst - past->pcb->ioBurst;
+	enqueue(queue, pcb);
+	return;
 }
