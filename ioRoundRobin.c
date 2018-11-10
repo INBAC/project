@@ -42,6 +42,8 @@ pid_t kernelPid;						// Kernel PID
 int main()
 {
 	int i;
+	int runCount = 0;
+	int ioCount = 0;
 	pid_t pid[PROCESS_NUM];
 	kernelPid = getpid();
 	int msgq;
@@ -80,6 +82,7 @@ int main()
 	newKernel.sa_handler = &kernelHandler;
 	sigaction(SIGALRM, &newKernel, &oldKernel);
 	runQueue = dequeue(readyQueue);
+	runCount++;
 
 	struct itimerval new_itimer, old_itimer;
 	new_itimer.it_interval.tv_sec = TICK_SEC;
@@ -99,6 +102,7 @@ int main()
 				runQueue->timeQuantum = TIME_QUANTUM;
 				priorityEnqueue(waitQueue, runQueue);
 				runQueue = dequeue(readyQueue);
+				runCount++;
 			}
 		}
 		else if(runQueue->timeQuantum == 0)
@@ -106,15 +110,18 @@ int main()
 			runQueue->timeQuantum = TIME_QUANTUM;
 			enqueue(readyQueue, runQueue);
 			runQueue = dequeue(readyQueue);
+			runCount++;
 		}
 		while(waitQueue->count != 0 && waitQueue->head->pcb->remainingIoBurst == 0)
 		{
 			waitTemp = dequeue(waitQueue);
 			enqueue(readyQueue, waitTemp);
+			ioCount++;
 		}
 	}
 	for(i = 0; i < PROCESS_NUM; i++)
 		kill(pid[i], SIGKILL);
+	printf("OS Times Up! Ending Now\nTotal Run Queue Completion: %d\nTotal Wait Queue Completion: %d\n", runCount, ioCount);
 	exit(0);
 }
 
