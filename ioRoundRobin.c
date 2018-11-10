@@ -12,7 +12,7 @@
 
 #define PROCESS_NUM 10					// 유저프로세서의 개수
 #define TICK_SEC 0						// 초 단위 TICK 조정
-#define TICK_USEC 1000					// 마이크로 초 단위 TICK 조정
+#define TICK_USEC 10					// 마이크로 초 단위 TICK 조정
 #define OS_RUNNING_TIME 10000			// 총 RUNNING TIME 조정
 #define TIME_QUANTUM 5					// 1QUANTUM 설정
 #define BURST_RANGE 10					// CPU burst 값과 IO burst값을  random 하게 만들어줄때  % 해주는 변수
