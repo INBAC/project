@@ -8,7 +8,7 @@
 #include<sys/time.h>
 #include<sys/types.h>
 #include<sys/wait.h>
-#include"queue1.h"
+#include"roundRobinQueue.h"
 
 #define CPU_TIME_QUANTUM 3
 #define USER_PROCESS_NUM 5
@@ -23,6 +23,7 @@ struct PCB *present_pcb;	// For present job
 struct Queue *readyQueue;		// main queue
 
 int remain_cpu_burst;
+int totalCpuBurst = 0;
 int cpu_burst[USER_PROCESS_NUM];
 
 int main()
@@ -39,6 +40,7 @@ int main()
 	srand((int)time(NULL));
 	for(int i = 0; i < USER_PROCESS_NUM ; i++) {
 		cpu_burst[i] = (rand() % 5) + 1;
+		totalCpuBurst = totalCpuBurst + cpu_burst[i];
 		pid = fork();
 		if (pid < -1) {
 			perror("fork error");
@@ -59,8 +61,8 @@ int main()
 			pcb[i]->remain_CPU_TIME_QUANTUM = CPU_TIME_QUANTUM;
 			addprocess(readyQueue, pcb[i]);
 			}
-		}
-
+	}
+	totalCpuBurst++;
 	memset(&new_sa, 0, sizeof(new_sa));
 	new_sa.sa_handler = &parent_handler;
 	sigaction(SIGALRM, &new_sa, &old_sa);
@@ -72,18 +74,18 @@ int main()
 	new_itimer.it_value.tv_usec = 0;
 	setitimer(ITIMER_REAL, &new_itimer, &old_itimer); // First signal은 1초후에 울림
 
-	while (present_pcb -> whto != 0);  //while loop를 까먹으면 signal이고 뭐고 아무것도 없다
-	printf("zzzz fake \n");
+	while (totalCpuBurst > 0);  //while loop를 까먹으면 signal이고 뭐고 아무것도 없다
+	printf("Program Finished\n");
 	exit(0);
 }
 
 void parent_handler(int signo){
 	PCB *next_process_pcb = NULL;
-
+	totalCpuBurst--;
 	if(present_pcb == NULL){
 		present_pcb = scheduler();
 	}
-
+	kill(present_pcb -> pid, SIGALRM);
 	present_pcb -> remain_CPU_TIME_QUANTUM--;
 	present_pcb -> remain_CPU_burst--;
 	if(present_pcb -> remain_CPU_burst != 0){
@@ -102,7 +104,6 @@ void parent_handler(int signo){
 			present_pcb = next_process_pcb;
 		}
 	}
-	kill(present_pcb -> pid, SIGALRM);
 }
 
 void child_action(int cpu_burst)

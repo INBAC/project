@@ -8,7 +8,7 @@
 #include<sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include "queue.h"
+#include "ioRoundRobinQueue.h"
 
 #define PROCESS_NUM 10					// 유저프로세서의 개수
 #define TICK_SEC 0						// 초 단위 TICK 조정
