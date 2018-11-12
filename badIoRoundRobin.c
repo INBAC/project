@@ -10,12 +10,12 @@
 #include <sys/msg.h>
 #include "ioRoundRobinQueue.h"
 
-#define PROCESS_NUM 10					// 유저프로세서의 개수
-#define TICK_SEC 1						// 초 단위 TICK 조정
-#define TICK_USEC 0					// 마이크로 초 단위 TICK 조정
-#define OS_RUNNING_TIME 10			// 총 RUNNING TIME 조정
-#define TIME_QUANTUM 5					// 1QUANTUM 설정
-#define BURST_RANGE 10					// CPU burst 값과 IO burst값을  random 하게 만들어줄때  % 해주는 변수
+#define PROCESS_NUM 20					// 유저프로세서의 개수
+#define TICK_SEC 0						// 초 단위 TICK 조정
+#define TICK_USEC 30				// 마이크로 초 단위 TICK 조정
+#define OS_RUNNING_TIME 10000			// 총 RUNNING TIME 조정
+#define TIME_QUANTUM 10					// 1QUANTUM 설정
+#define BURST_RANGE 20					// CPU burst 값과 IO burst값을  random 하게 만들어줄때  % 해주는 변수
 #define KEY_NUM 0x3655					// Msg Queue Key 값
 
 typedef struct msgbuf{
