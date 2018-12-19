@@ -87,10 +87,7 @@ struct dentry {
 	unsigned int dir_length;
 	unsigned int name_len;
 	unsigned int file_type;
-	union { // name
-		unsigned char name[255];
-		unsigned char n_pad[16][16];
-	};
+	unsigned char name[16];
 };
 
 
