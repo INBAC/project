@@ -121,13 +121,12 @@ void openFile(void)
 			fread(&dentry->file_type, sizeof(int), 1, filePtr);
 			fread(&dentry->name, sizeof(char), 16, filePtr);
 			if(strcmp(input, dentry->name) == 0)
-				break;
+				return;
 			free(dentry);
 		}
-		if(strcmp(input, dentry->name) == 0)
-			break;
 	}
-	return;
+	printf("No such file\n");
+	closeDisk();
 }
 
 void readFile(void)
