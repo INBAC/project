@@ -28,7 +28,7 @@ void mountDisk(void)
 	partition = malloc(sizeof(struct partition));
 
 	//linking file pointer
-	filePtr = fopen("./disk.img", "rb");
+	filePtr = fopen("./disk.img", "rw");
 	if(filePtr == NULL)
 	{
 		printf("Could not open file\n");
@@ -50,6 +50,19 @@ void mountDisk(void)
 	fread(&partition->s.first_data_block, sizeof(int), 1, filePtr);
 	fread(&partition->s.volume_name, sizeof(char), 24, filePtr);
 	fread(&partition->s.padding, sizeof(char), 960, filePtr);
+	printf("---SuperBlock Information---\n");
+	printf("Partition type:--------- %d\n", partition->s.partition_type);
+	printf("Block size:------------- %d\n", partition->s.block_size);
+	printf("Inode size:------------- %d\n", partition->s.inode_size);
+	printf("Directory file inode:--- %d\n", partition->s.first_inode);
+	printf("Number of inodes:------- %d\n", partition->s.num_inodes);
+	printf("Number of inode blocks:- %d\n", partition->s.num_inode_blocks);
+	printf("Number of free inodes:-- %d\n", partition->s.num_free_inodes);
+	printf("Number of blocks:------- %d\n", partition->s.num_blocks);
+	printf("Number of free blocks:-- %d\n", partition->s.num_free_blocks);
+	printf("First data block:------- %d\n", partition->s.first_data_block);
+	printf("Partition name:--------- %s\n", partition->s.volume_name);
+	printf("\n");
 
 	//populating partition inode_table
 	for(i = 0; i < 224; i++)
@@ -60,20 +73,26 @@ void mountDisk(void)
 		fread(&partition->inode_table[i].size, sizeof(int), 1, filePtr);
 		fread(&partition->inode_table[i].indirect_block, sizeof(int), 1, filePtr);
 		fread(&partition->inode_table[i].blocks, sizeof(short), 6, filePtr);
+		printf("---inode #%d---\n", i);
+		printf("Mode:----------- %d\n", partition->inode_table[i].mode);
+		printf("Locked:--------- %d\n", partition->inode_table[i].locked);
+		printf("Date:----------- %d\n", partition->inode_table[i].date);
+		printf("File Size:------ %d\n", partition->inode_table[i].size);
+		printf("Indirect block:- %d\n", partition->inode_table[i].indirect_block);
+		printf("Blocks:--------- ");
+		for(int j = 0; j < 6; j++)
+			printf("%d ", partition->inode_table[i].blocks[j]);
+		printf("\n\n");
 	}
 }
 
 void ls(void)
 {
+	printf("---ls---\n");
 	int blockAddr;
 	int blockCntr;
 	int dentryCntr;
-	int blockNum;
-	if(partition->inode_table[partition->s.first_inode].size % BLOCK_SIZE == 0)
-		blockNum = partition->inode_table[partition->s.first_inode].size / BLOCK_SIZE;
-
-	else
-		blockNum = (partition->inode_table[partition->s.first_inode].size / BLOCK_SIZE) + 1;
+	int blockNum = (partition->inode_table[partition->s.first_inode].size + 0x3ff) / BLOCK_SIZE;
 
 	for(blockCntr = 0; blockCntr < blockNum; blockCntr++)
 	{
@@ -101,12 +120,7 @@ void openFile(void)
 	int blockAddr;
 	int blockCntr;
 	int dentryCntr;
-	int blockNum;
-	if(partition->inode_table[partition->s.first_inode].size % BLOCK_SIZE == 0)
-		blockNum = partition->inode_table[partition->s.first_inode].size / BLOCK_SIZE;
-
-	else
-		blockNum = (partition->inode_table[partition->s.first_inode].size / BLOCK_SIZE) + 1;
+	int blockNum = (partition->inode_table[partition->s.first_inode].size + 0x3ff) / BLOCK_SIZE;
 
 	for(blockCntr = 0; blockCntr < blockNum; blockCntr++)
 	{
@@ -133,14 +147,23 @@ void readFile(void)
 {
 	char data[BLOCK_SIZE];
 	int blockCntr;
-	int blockNum;
 	int blockAddr;
-	if(partition->inode_table[dentry->inode].size % BLOCK_SIZE == 0)
-		blockNum = partition->inode_table[dentry->inode].size / BLOCK_SIZE;
-
-	else
-		blockNum = (partition->inode_table[dentry->inode].size / BLOCK_SIZE) + 1;
-
+	int blockNum = (partition->inode_table[partition->s.first_inode].size + 0x3ff) / BLOCK_SIZE;
+	printf("File name:-------- %s\n", dentry->name);
+	printf("Inode number:----- %d\n", dentry->inode);
+	printf("Dentry Size:------ %d\n", dentry->dir_length);
+	printf("File name length:- %d\n", dentry->name_len);
+	printf("File Type:-------- %d\n", dentry->file_type);
+	printf("Mode:------------- %d\n", partition->inode_table[dentry->inode].mode);
+	printf("Locked:----------- %d\n", partition->inode_table[dentry->inode].locked);
+	printf("Date:------------- %d\n", partition->inode_table[dentry->inode].date);
+	printf("File Size:-------- %d\n", partition->inode_table[dentry->inode].size);
+	printf("Indirect block:--- %d\n", partition->inode_table[dentry->inode].indirect_block);
+	printf("Blocks:----------- ");
+	for(int j = 0; j < 6; j++)
+		printf("%d ", partition->inode_table[dentry->inode].blocks[j]);
+	printf("\n");
+	printf("Data Content:----- ");
 	for(blockCntr = 0; blockCntr < blockNum; blockCntr++)
 	{
 		blockAddr = (BLOCK_SIZE * partition->s.first_data_block) + (partition->inode_table[dentry->inode].blocks[blockCntr] * BLOCK_SIZE);
